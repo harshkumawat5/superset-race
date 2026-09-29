@@ -5,7 +5,29 @@ import { tempDir } from "./helpers.ts";
 
 // superset.ts reads SUPERSET_BIN at import time.
 process.env.SUPERSET_BIN = join(import.meta.dir, "mock-superset.ts");
-const { StatusProber, stateFromLifecycleEvent } = await import("../src/superset.ts");
+const { StatusProber, blockingPrompt, stateFromLifecycleEvent } = await import("../src/superset.ts");
+
+test("spots the first-run prompts that stop an agent before it starts", () => {
+	// Screens captured from real Claude Code 2.1 and Codex 0.158 launches in Superset.
+	const claude = [
+		"❯ 'claude' '--dangerously-skip-permissions' 'Fix https://github.com/python-humanize/humanize/issues/379'",
+		" Accessing workspace:",
+		" /Users/me/.superset/worktrees/humanize/race/x/claude",
+		" Quick safety check: Is this a project you created or one you trust?",
+		" ❯ No, exit",
+		"   Yes, I trust this folder",
+	].join("\n");
+	const codex = [
+		"  Folder access",
+		"  Trust this folder? Codex can read, edit, and run files here, subject to your permission settings.",
+		"› 1. Trust and continue",
+		"  2. Quit",
+	].join("\n");
+	expect(blockingPrompt(claude)).toBe("a folder-trust prompt");
+	expect(blockingPrompt(codex)).toBe("a folder-trust prompt");
+	expect(blockingPrompt("  Hooks need review\n  9 hooks are new or changed.")).toBe("a hook-trust prompt");
+	expect(blockingPrompt("⏺ Reading src/humanize/time.py\n✻ Thinking…")).toBeNull();
+});
 
 test("lifecycle events map to race states", () => {
 	expect(stateFromLifecycleEvent("Start")).toBe("working");

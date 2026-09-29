@@ -19,15 +19,15 @@ command -v git >/dev/null && ok "git $(git --version | cut -d' ' -f3)" || bad "g
 if [ -x "$SUPERSET_BIN" ]; then
 	ok "superset CLI at $SUPERSET_BIN"
 else
-	bad "superset CLI missing: install the desktop app from https://superset.sh and open it once"
+	bad "superset CLI missing: brew install --cask superset (or https://superset.sh), then open the app once"
 fi
 (cd "$HERE/.." && bun install --silent >/dev/null 2>&1) && ok "superset-race dependencies"
 
 install_hint() {
 	case "$1" in
-	claude) echo "curl -fsSL https://claude.ai/install.sh | bash" ;;
-	codex) echo "npm install -g @openai/codex" ;;
-	gemini) echo "npm install -g @google/gemini-cli   (needs Node 20+)" ;;
+	claude) echo "brew install --cask claude-code" ;;
+	codex) echo "brew install codex" ;;
+	gemini) echo "brew install gemini-cli" ;;
 	*) echo "see its docs" ;;
 	esac
 }
@@ -83,6 +83,27 @@ if [ -x "$SUPERSET_BIN" ] && [ -d "$DEMO_DIR/.git" ]; then
 	fi
 fi
 
+echo "Agent folder trust"
+# Superset's worktrees inherit trust from the main checkout. Untrusted, each
+# agent parks on a "trust this folder?" dialog and never starts the task.
+if [ -d "$DEMO_DIR/.git" ]; then
+	repo=$(cd "$DEMO_DIR" && pwd -P)
+	for agent in ${AGENTS//,/ }; do
+		case "$agent" in
+		claude)
+			trusted=$(REPO="$repo" bun -e 'const d = JSON.parse(await Bun.file(process.env.HOME + "/.claude.json").text()); console.log(d.projects?.[process.env.REPO]?.hasTrustDialogAccepted === true)' 2>/dev/null)
+			fix="cd $DEMO_DIR && claude --dangerously-skip-permissions, choose \"Yes, I trust this folder\" and \"Yes, I accept\", then /exit"
+			;;
+		codex)
+			trusted=$(grep -A1 -F "[projects.\"$repo\"]" "$HOME/.codex/config.toml" 2>/dev/null | grep -q 'trust_level = "trusted"' && echo true)
+			fix="cd $DEMO_DIR && codex, choose \"Trust and continue\" and \"Trust all and continue\", then /quit"
+			;;
+		*) continue ;;
+		esac
+		[ "$trusted" = "true" ] && ok "$agent trusts $DEMO_DIR" || bad "$agent hasn't trusted $DEMO_DIR: $fix"
+	done
+fi
+
 echo "Warm-up"
 if [ -d "$DEMO_DIR/.git" ] && command -v uv >/dev/null; then
 	summary=$(cd "$DEMO_DIR" && eval "$VERIFY" 2>&1 | tail -1 | sed 's/\x1b\[[0-9;]*m//g')
@@ -91,7 +112,7 @@ fi
 
 echo
 if [ "$FAILED" = "0" ]; then
-	echo "Ready. Record with: bash $HERE/race.sh"
+	echo "Ready. Run the race with: bash $HERE/race.sh"
 else
 	echo "Fix the ✗ items above and re-run: bash $HERE/setup.sh"
 	exit 1

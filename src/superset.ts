@@ -167,6 +167,23 @@ export function stateFromLifecycleEvent(event: string | undefined): AgentState {
 	}
 }
 
+// First-run screens that stop an agent before it reports any lifecycle event.
+const BLOCKING_PROMPTS: Array<[RegExp, string]> = [
+	[/trust this folder|trust the files in this folder|Quick safety check/i, "a folder-trust prompt"],
+	[/Bypass Permissions mode/i, "the bypass-permissions warning"],
+	[/Hooks need review/i, "a hook-trust prompt"],
+	[/Select login method|Please (?:log|sign) in|Not logged in/i, "a sign-in prompt"],
+];
+
+/** What an agent that never started is stuck on, judged from its screen. */
+export function blockingPrompt(screen: string): string | null {
+	const tail = screen.split("\n").slice(-40).join("\n");
+	for (const [pattern, label] of BLOCKING_PROMPTS) {
+		if (pattern.test(tail)) return label;
+	}
+	return null;
+}
+
 interface TerminalSession {
 	terminalId: string;
 	agentStatus?: { lastEventType: string };
@@ -301,7 +318,21 @@ export class StatusProber {
 		return this.probeScreen(target);
 	}
 
+	/** Null when the screen shows no known blocking prompt, or can't be read. */
+	async blockedOn(target: ProbeTarget): Promise<string | null> {
+		const text = await this.readScreen(target).catch(() => null);
+		return text === null ? null : blockingPrompt(text);
+	}
+
 	private async probeScreen(target: ProbeTarget): Promise<Probe> {
+		const text = await this.readScreen(target);
+		const hash = createHash("sha1").update(text).digest("hex");
+		const changed = this.screens.get(target.terminalId) !== hash;
+		this.screens.set(target.terminalId, hash);
+		return { state: changed ? "working" : "idle", source: "screen" };
+	}
+
+	private async readScreen(target: ProbeTarget): Promise<string> {
 		const snapshot = await superset<{ text: string }>([
 			"terminals",
 			"read",
@@ -311,9 +342,6 @@ export class StatusProber {
 			target.terminalId,
 			"--local",
 		]);
-		const hash = createHash("sha1").update(snapshot.text).digest("hex");
-		const changed = this.screens.get(target.terminalId) !== hash;
-		this.screens.set(target.terminalId, hash);
-		return { state: changed ? "working" : "idle", source: "screen" };
+		return snapshot.text;
 	}
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The race you record: three agents, humanize#379, full test suite. Extra flags pass through.
+# The demo race: humanize#379, full test suite. Extra flags pass through.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=demo.env

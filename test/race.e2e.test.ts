@@ -111,6 +111,22 @@ describe("superset-race", () => {
 		expect(byAgent.nope.statusDetail).toContain('Unknown agent "nope"');
 	}, 60_000);
 
+	test("names the first-run prompt an agent is stuck on", () => {
+		const { json } = race(
+			[
+				"--project", "demo", "--prompt", "Fix add()", "--agents", "untrusted",
+				"--timeout", "7s", "--no-baseline", "--out", tempDir("out"), ...FAST,
+			],
+			{ ...env, MOCK_SUPERSET_HOME: tempDir("mock-home") },
+		);
+		expect(json.racers[0]).toMatchObject({
+			agent: "untrusted",
+			status: "timeout",
+			statusDetail:
+				"still needs-input after 7s (stuck on a folder-trust prompt; answer it in Superset)",
+		});
+	}, 60_000);
+
 	test("falls back to screen quiescence when the CLI has no agent status", () => {
 		const { json } = race(
 			["--project", "demo", "--prompt", "Fix add()", "--agents", "codex", "--no-baseline", "--out", tempDir("out"), ...FAST],

@@ -80,7 +80,7 @@ The scoreboard's last column shows which source was used for each agent.
 
 ## Try it
 
-[`demo/`](demo/) races claude, codex and gemini on a real open-source bug
+[`demo/`](demo/) races Claude and Codex on a real open-source bug
 ([python-humanize/humanize#379](https://github.com/python-humanize/humanize/issues/379)).
 `bash demo/setup.sh` checks and prepares everything, then `bash demo/race.sh` runs it.
 

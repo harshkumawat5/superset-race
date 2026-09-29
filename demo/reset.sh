@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Between takes: delete the race workspaces and race/* branches so the next take starts clean.
+# Between races: delete the race workspaces and race/* branches so the next take starts clean.
 # Only touches workspaces tagged "race" and branches under race/. Pass -y to skip the prompt.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -27,4 +27,4 @@ for branch in $branches; do
 	git -C "$DEMO_DIR" branch -D "$branch" >/dev/null 2>&1 || true
 done
 git -C "$DEMO_DIR" worktree prune
-echo "Clean. Next take: bash $HERE/race.sh"
+echo "Clean. Next race: bash $HERE/race.sh"

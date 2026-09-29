@@ -66,6 +66,11 @@ async function runFakeAgent(terminalId: string, worktree: string, agent: string)
 
 	emit("Attached");
 	screen(`${agent} booting`);
+	if (agent === "untrusted") {
+		// Parks on a first-run dialog, as a real agent in an untrusted folder does.
+		screen("Quick safety check: Is this a project you created or one you trust?\n ❯ No, exit\n   Yes, I trust this folder");
+		return;
+	}
 	await sleep(300);
 	emit("Start");
 	let tick = 0;

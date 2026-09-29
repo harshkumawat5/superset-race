@@ -209,7 +209,8 @@ function boardLine(racer: Racer, width: number, frame: number): string {
 				: done
 					? color.green("✓")
 					: color.cyan(SPINNER[frame % SPINNER.length] as string);
-	return `  ${icon} ${pad(racer.agent, width)}  ${pad(racer.status, 13)} ${pad(formatDuration(elapsed), 7)} ${color.dim(racer.source ?? "")}`;
+	const note = racer.status === "needs-input" ? racer.statusDetail : racer.source;
+	return `  ${icon} ${pad(racer.agent, width)}  ${pad(racer.status, 13)} ${pad(formatDuration(elapsed), 7)} ${color.dim(note ?? "")}`;
 }
 
 async function waitForIdle(options: Options, racers: Racer[]): Promise<void> {
@@ -245,7 +246,8 @@ async function waitForIdle(options: Options, racers: Racer[]): Promise<void> {
 		if (pending.length === 0) break;
 		if (Date.now() > deadline) {
 			for (const racer of pending) {
-				racer.statusDetail = `still ${racer.status} after ${formatDuration(options.timeoutMs)}`;
+				const why = racer.statusDetail ? ` (${racer.statusDetail})` : "";
+				racer.statusDetail = `still ${racer.status} after ${formatDuration(options.timeoutMs)}${why}`;
 				racer.status = "timeout";
 			}
 			break;
@@ -253,17 +255,26 @@ async function waitForIdle(options: Options, racers: Racer[]): Promise<void> {
 
 		await Promise.all(
 			pending.map(async (racer) => {
-				const probe = await prober
-					.probe({
-						workspaceId: racer.workspaceId as string,
-						terminalId: racer.terminalId as string,
-					})
-					.catch(() => null);
+				const target = {
+					workspaceId: racer.workspaceId as string,
+					terminalId: racer.terminalId as string,
+				};
+				const probe = await prober.probe(target).catch(() => null);
 				if (!probe) return;
 				racer.status = probe.state;
 				racer.source = probe.source;
+				racer.statusDetail = undefined;
 				const now = Date.now();
 				const launchedAt = racer.launchedAt as number;
+				// No lifecycle event for a while: an agent usually reports within
+				// seconds, so look for a first-run prompt holding it up.
+				if (probe.state === "starting" && now - launchedAt >= options.settleMs * 4) {
+					const blocker = await prober.blockedOn(target);
+					if (blocker) {
+						racer.status = "needs-input";
+						racer.statusDetail = `stuck on ${blocker}; answer it in Superset`;
+					}
+				}
 				if (probe.state === "idle") {
 					const since = idleSince.get(racer) ?? now;
 					idleSince.set(racer, since);

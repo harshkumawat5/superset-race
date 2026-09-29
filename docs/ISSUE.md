@@ -86,10 +86,10 @@ procedure, (d) `race`. I'm happy to send PRs for (b) through (d) once the shape 
 ### Workarounds you've tried
 
 I built the proposal as a standalone script on today's CLI: **https://github.com/harshkumawat5/superset-race**
-(Bun/TypeScript, no dependencies, tested against a mock CLI). Here it is racing Claude, Codex
-and Gemini on a real open bug, python-humanize/humanize#379:
+(Bun/TypeScript, no dependencies, tested against a mock CLI). Here it is racing Claude and Codex
+on a real open bug, python-humanize/humanize#379:
 
-![Three race workspaces in Superset](https://raw.githubusercontent.com/harshkumawat5/superset-race/main/docs/real-run-superset.png)
+![Race workspaces in Superset](https://raw.githubusercontent.com/harshkumawat5/superset-race/main/docs/real-run-superset.png)
 
 <!-- replace with the real run's scoreboard.md -->
 | # | AGENT | STATUS | TIME | TESTS | NEW TESTS | TEST FILES | DIFF |
