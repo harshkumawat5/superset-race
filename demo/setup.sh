@@ -62,7 +62,7 @@ if [ -d "$DEMO_DIR/.git" ]; then
 	ok "humanize main at $(git -C "$DEMO_DIR" rev-parse --short HEAD)"
 	[ -z "$(git -C "$DEMO_DIR" status --porcelain)" ] && ok "working tree clean" || warn "uncommitted changes in $DEMO_DIR"
 	stale=$(git -C "$DEMO_DIR" branch --list 'race/*' '*/race/*' | wc -l | tr -d ' ')
-	[ "$stale" = "0" ] || warn "$stale race branches from an earlier take: bash demo/reset.sh"
+	[ "$stale" = "0" ] || warn "$stale race branches from an earlier run: bash demo/reset.sh"
 fi
 if command -v gh >/dev/null; then
 	state=$(gh issue view 379 -R python-humanize/humanize --json state -q .state 2>/dev/null)

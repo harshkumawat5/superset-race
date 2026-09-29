@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Between races: delete the race workspaces and race/* branches so the next take starts clean.
+# Between races: delete the race workspaces and race/* branches so the next race starts clean.
 # Only touches workspaces tagged "race" and branches under race/. Pass -y to skip the prompt.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

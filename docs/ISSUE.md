@@ -2,7 +2,7 @@
 Feature request for superset-sh/superset, following .github/ISSUE_TEMPLATE/feature_request.yml.
 Before opening:
   - replace the scoreboard with the one from the real run (~/.superset-race/<run-id>/scoreboard.md)
-  - commit the Superset screenshot as docs/real-run-superset.png
+  - commit the Superset screenshot as docs/real-run-superset.png (or drop the image line)
 Title:
   [feat] CLI: race one prompt across agents — `superset agents wait` + `superset race`
 -->
@@ -43,6 +43,12 @@ superset agents wait --workspace <id> [--terminal <id>] [--timeout 30m] [--settl
   timeout. `--json` prints the final `agentStatus` (the shape from #7007).
 - `--terminal` defaults to the workspace's only agent terminal. With several, it waits for all of
   them.
+- It also needs a **"never started"** state. An agent parked on a first-run dialog (folder trust,
+  hook trust, sign-in) emits no lifecycle event at all, so it looks the same as one that's still
+  booting. In my first real run, both agents sat on "trust this folder?" for 30 minutes before the
+  script timed out: the demo repo had never been trusted, and Superset's worktrees inherit trust
+  from the main checkout. A deadline for the first event, reported as its own exit code, would
+  make this fail fast.
 - Useful for CI, automations and any script that chains agents, not just racing.
 
 **2. `superset race`: fan out, wait, verify, score**
@@ -91,11 +97,17 @@ on a real open bug, python-humanize/humanize#379:
 
 ![Race workspaces in Superset](https://raw.githubusercontent.com/harshkumawat5/superset-race/main/docs/real-run-superset.png)
 
-<!-- replace with the real run's scoreboard.md -->
 | # | AGENT | STATUS | TIME | TESTS | NEW TESTS | TEST FILES | DIFF |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | … | idle | … | … passed | +… | … | … |
-|  | baseline |  |  | … passed |  |  | … |
+| 1 | claude | idle | 3m18s | 770 passed | +9 | 1 | 2 files +43 −2 |
+| 2 | codex | idle | 56s | 676 passed 90 failed | +4 | 1 | 2 files +23 −2 |
+|  | baseline |  |  | 761 passed |  |  | 392aef70 |
+
+Both agents wrote almost the same fix. Codex finished 3.5× sooner, but its check calls `dt.timedelta`
+at runtime, and humanize imports `datetime` only under `TYPE_CHECKING`, so every `precisedelta()` call
+raises `NameError`. Claude imported it inside the function. That's the call this is meant to make:
+the fast diff that looks right breaks the package, and only running the suite in each worktree
+shows it.
 
 To wait for idle, the script has to fall back to things a CLI user shouldn't need:
 
@@ -103,6 +115,8 @@ To wait for idle, the script has to fall back to things a CLI user shouldn't nee
    `terminalAgents.listByWorkspace` tRPC procedure directly.
 2. Failing that, it treats "the screen from `terminals read` hasn't changed for 30s" as idle.
    This can't tell a finished agent from one blocked on a permission prompt.
+3. To catch agents that never start, it reads the screen of any agent that hasn't reported
+   anything for a minute and matches it against known first-run prompts.
 
 Verify and diff run in the local worktree. The script can't support remote or cloud hosts, which is
 why the proposal puts verify on the host. `agents wait` plus a run-to-completion primitive would

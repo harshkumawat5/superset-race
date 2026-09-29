@@ -6,39 +6,34 @@ them to finish, run your verify command in every worktree, and see who
 won:
 
 ```
-$ superset-race --project humanize --agents claude,codex,gemini --jobs 4 \
-    --prompt "Fix python-humanize/humanize#379: precisedelta() drops the sign of negative timedeltas. Keep the sign and add tests." \
-    --verify "uv run --quiet --no-project --with-editable . --with pytest --with freezegun --with pytest-benchmark --with pytest-codspeed pytest -q -p no:cacheprovider --benchmark-disable"
-
-Racing claude vs codex vs gemini in humanize
-  ✓ claude launched on race/20260929-141912/claude
-  ✓ codex launched on race/20260929-141912/codex
-  ✓ gemini launched on race/20260929-141912/gemini
+$ bash demo/race.sh
+Racing claude vs codex in humanize
+  ✓ claude launched on race/20260930-004548/claude
+  ✓ codex launched on race/20260930-004548/codex
 
 Waiting for agents to go idle
-  ✓ claude  idle          6s      terminals.list
-  ✓ codex   idle          5s      terminals.list
-  ✓ gemini  idle          5s      terminals.list
+  ✓ claude  idle          3m18s   host
+  ✓ codex   idle          56s     host
 
 Diffing against origin/main
 Verifying with: uv run --quiet --no-project --with-editable . --with pytest …
-  claude: pass in 11s
-  baseline: pass in 11s
-  codex: pass in 11s
-  gemini: pass in 11s
+  claude: pass in 8s
+  baseline: pass in 8s
+  codex: exit 1 in 9s
 
-  #  AGENT     STATUS  TIME  TESTS       NEW TESTS  TEST FILES  DIFF
-  1  claude    idle    6s    764 passed  +3         1           2 files +19 −2
-  2  codex     idle    5s    762 passed  +1         1           2 files +3 −1
-  3  gemini    idle    5s    761 passed  0          0           1 file +1 −1
-     baseline                761 passed                         392aef70
+  #  AGENT     STATUS  TIME   TESTS                 NEW TESTS  TEST FILES  DIFF
+  1  claude    idle    3m18s  770 passed            +9         1           2 files +43 −2
+  2  codex     idle    56s    676 passed 90 failed  +4         1           2 files +23 −2
+     baseline                 761 passed                                   392aef70
 
-Winner: claude on race/20260929-141912/claude
-  open  superset workspaces open ws-claude-1
-  diff  git -C …/worktrees/ws-claude-1 diff 392aef707c0e
+Winner: claude on race/20260930-004548/claude
+  open  superset workspaces open 861b70ca-b8ef-4647-a574-4f162b036f78
+  diff  git -C ~/.superset/worktrees/humanize/race/20260930-004548/claude diff 392aef707c0e
 ```
 
-*This output is from a dry run on the real humanize repo, with a real baseline and real pytest runs. The "agents" were scripted patches driven by [`test/mock-superset.ts`](test/mock-superset.ts), which is why the times are seconds. For a run with real agents, see [`demo/`](demo/).*
+This is a real run from 2026-09-30: Superset 1.31.0, Claude Code 2.1.277 vs Codex 0.158.0, on the open bug
+[python-humanize/humanize#379](https://github.com/python-humanize/humanize/issues/379). See
+[what the scoreboard caught](#real-run-humanize379).
 
 ## What it does
 
@@ -77,6 +72,26 @@ app. The public CLI doesn't expose it yet, so `superset-race` tries three source
    This source can't tell a finished agent from one waiting at a permission prompt.
 
 The scoreboard's last column shows which source was used for each agent.
+
+## Real run: humanize#379
+
+Both agents wrote almost the same fix: work out the sign up front, prefix it on both return paths of
+`precisedelta()`, and add negative cases to `tests/test_time.py`. Codex finished 3.5× sooner. But its
+check calls `dt.timedelta` at runtime, and humanize imports `datetime` only under `TYPE_CHECKING`, so
+every `precisedelta()` call raises `NameError`. 87 of the 90 failures are in `tests/test_time.py`.
+Re-running the suite alone in Codex's worktree gives the same 90 failures. Claude imported `datetime`
+inside the function, kept all 761 existing tests green, and added 9.
+
+Two things came out of getting this run to work:
+
+- **The first attempt stalled for 30 minutes with no error.** Superset's worktrees inherit an agent's
+  folder trust from the main checkout. The demo repo had never been trusted, so both agents sat on a
+  "trust this folder?" dialog. That dialog emits no lifecycle event, so the race could only report
+  them as still starting. The race now reads the screen of an agent that has reported nothing for
+  four settle periods and names the prompt it's stuck on (`needs-input: stuck on a folder-trust prompt`).
+  `demo/setup.sh` checks trust before the race starts.
+- **Gemini isn't in the default race.** Its free API tier allows 20 requests a day, and one agent
+  session uses more than that.
 
 ## Try it
 
