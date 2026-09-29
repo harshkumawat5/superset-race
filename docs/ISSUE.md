@@ -1,8 +1,8 @@
 <!--
 Feature request for superset-sh/superset, following .github/ISSUE_TEMPLATE/feature_request.yml.
 Before opening:
-  - replace <LOOM_URL>
   - replace the scoreboard with the one from the real run (~/.superset-race/<run-id>/scoreboard.md)
+  - commit the Superset screenshot as docs/real-run-superset.png
 Title:
   [feat] CLI: race one prompt across agents — `superset agents wait` + `superset race`
 -->
@@ -86,8 +86,10 @@ procedure, (d) `race`. I'm happy to send PRs for (b) through (d) once the shape 
 ### Workarounds you've tried
 
 I built the proposal as a standalone script on today's CLI: **https://github.com/harshkumawat5/superset-race**
-(Bun/TypeScript, no dependencies, tested against a mock CLI). Loom of a real race on
-python-humanize/humanize#379: **<LOOM_URL>**
+(Bun/TypeScript, no dependencies, tested against a mock CLI). Here it is racing Claude, Codex
+and Gemini on a real open bug, python-humanize/humanize#379:
+
+![Three race workspaces in Superset](https://raw.githubusercontent.com/harshkumawat5/superset-race/main/docs/real-run-superset.png)
 
 <!-- replace with the real run's scoreboard.md -->
 | # | AGENT | STATUS | TIME | TESTS | NEW TESTS | TEST FILES | DIFF |
