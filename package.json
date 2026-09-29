@@ -1,0 +1,19 @@
+{
+	"name": "superset-race",
+	"version": "0.1.0",
+	"description": "Race coding agents on one prompt in Superset workspaces, verify each worktree, print a scoreboard",
+	"type": "module",
+	"license": "MIT",
+	"bin": {
+		"superset-race": "./src/cli.ts"
+	},
+	"scripts": {
+		"race": "bun src/cli.ts",
+		"test": "bun test",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/bun": "1.3.1",
+		"typescript": "5.9.3"
+	}
+}
