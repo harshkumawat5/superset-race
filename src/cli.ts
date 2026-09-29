@@ -4,7 +4,7 @@
  * Superset workspace, wait for them to go idle, verify every worktree, and
  * print a scoreboard.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -36,11 +36,12 @@ const HELP = `superset-race — race coding agents on one prompt in Superset wor
 Usage
   superset-race --project <id|name|path> --prompt <text> [options]
   superset-race --score <workspaceId,...> [options]      re-score finished workspaces
+  superset-race --show <run-id|dir>                      re-print a past run's scoreboard
 
 Options
   --project <ref>         Superset project to race in: id, name, or repo path
   --prompt <text>         Task every agent gets; or --prompt-file <path>
-  --agents <list>         Comma-separated agent presets (default: claude,codex,gemini)
+  --agents <list>         Comma-separated agent presets (default: claude,codex)
   --verify <cmd>          Shell command run in each worktree (default: detected)
   --base-branch <name>    Branch to fork from and diff against (default: repo default)
   --timeout <dur>         Longest to wait for agents to go idle (default: 30m)
@@ -81,7 +82,7 @@ const list = (value: string) =>
 		.map((item) => item.trim())
 		.filter(Boolean);
 
-function parseOptions(argv: string[]): Options | null {
+function parseOptions(argv: string[]): Options | { show: string } | null {
 	const parse = () =>
 		parseArgs({
 			args: argv,
@@ -89,8 +90,9 @@ function parseOptions(argv: string[]): Options | null {
 				project: { type: "string" },
 				prompt: { type: "string" },
 				"prompt-file": { type: "string" },
-				agents: { type: "string", default: "claude,codex,gemini" },
+				agents: { type: "string", default: "claude,codex" },
 				score: { type: "string" },
+				show: { type: "string" },
 				verify: { type: "string" },
 				"base-branch": { type: "string" },
 				timeout: { type: "string", default: "30m" },
@@ -113,6 +115,7 @@ function parseOptions(argv: string[]): Options | null {
 		throw new RaceError((error as Error).message, "See: superset-race --help");
 	}
 	if (values.help) return null;
+	if (values.show) return { show: values.show };
 
 	const prompt = values["prompt-file"]
 		? readFileSync(values["prompt-file"], "utf-8").trim()
@@ -331,10 +334,62 @@ function agentOf(workspace: WorkspaceDetail): string {
 	);
 }
 
+interface RaceResult {
+	runId: string;
+	prompt?: string;
+	baseRef: string;
+	baseSha: string;
+	verify: string;
+	baseline?: Baseline;
+	winner: string | null;
+	racers: Racer[];
+}
+
+function printScoreboard(result: RaceResult): void {
+	const winner = result.racers.find((racer) => racer.agent === result.winner);
+	process.stdout.write(`\n${renderTable(result.racers, result.baseline)}\n\n`);
+	for (const racer of result.racers) {
+		if (racer.statusDetail) log(color.dim(`  ${racer.agent}: ${racer.statusDetail}`));
+	}
+	if (winner) {
+		process.stdout.write(
+			[
+				`${color.bold("Winner:")} ${winner.agent} on ${winner.branch}`,
+				`  open  superset workspaces open ${winner.workspaceId}`,
+				`  diff  git -C ${winner.worktreePath} diff ${result.baseSha.slice(0, 12)}`,
+				"",
+			].join("\n"),
+		);
+	} else {
+		process.stdout.write(`${color.yellow("No winner:")} no agent changed anything.\n`);
+	}
+}
+
+/** Re-print a finished run from its race.json: same data, same renderer. */
+function showRun(ref: string): void {
+	const dir = existsSync(join(ref, "race.json"))
+		? ref
+		: join(homedir(), ".superset-race", ref);
+	const file = join(dir, "race.json");
+	if (!existsSync(file)) {
+		throw new RaceError(`No race.json in ${ref}`, "Pass a run id from ~/.superset-race or a run directory");
+	}
+	const result = JSON.parse(readFileSync(file, "utf-8")) as RaceResult;
+	process.stdout.write(
+		`${color.bold("superset-race")} ${color.dim(`run ${result.runId} · base ${result.baseSha.slice(0, 8)} (${result.baseRef})`)}\n`,
+	);
+	if (result.prompt) process.stdout.write(`${color.dim(`> ${result.prompt}`)}\n`);
+	printScoreboard(result);
+}
+
 async function main(): Promise<void> {
 	const options = parseOptions(process.argv.slice(2));
 	if (!options) {
 		process.stdout.write(HELP);
+		return;
+	}
+	if ("show" in options) {
+		showRun(options.show);
 		return;
 	}
 
@@ -428,7 +483,7 @@ async function main(): Promise<void> {
 
 	const ranked = rank(racers);
 	const winner = ranked[0]?.diff?.filesChanged ? ranked[0] : undefined;
-	const result = {
+	const result: RaceResult = {
 		runId,
 		prompt: options.prompt,
 		baseRef,
@@ -447,22 +502,7 @@ async function main(): Promise<void> {
 	if (options.json) {
 		process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 	} else {
-		process.stdout.write(`\n${renderTable(ranked, baseline)}\n\n`);
-		for (const racer of ranked) {
-			if (racer.statusDetail) log(color.dim(`  ${racer.agent}: ${racer.statusDetail}`));
-		}
-		if (winner) {
-			process.stdout.write(
-				[
-					`${color.bold("Winner:")} ${winner.agent} on ${winner.branch}`,
-					`  open  superset workspaces open ${winner.workspaceId}`,
-					`  diff  git -C ${winner.worktreePath} diff ${baseSha.slice(0, 12)}`,
-					"",
-				].join("\n"),
-			);
-		} else {
-			process.stdout.write(`${color.yellow("No winner:")} no agent changed anything.\n`);
-		}
+		printScoreboard(result);
 		log(color.dim(`Logs and results: ${outDir}`));
 	}
 

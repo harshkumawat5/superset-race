@@ -5,6 +5,8 @@ Give the same prompt to several coding agents, each in its own
 them to finish, run your verify command in every worktree, and see who
 won:
 
+![Scoreboard from the real run](docs/real-run-scoreboard.png)
+
 ```
 $ bash demo/race.sh
 Racing claude vs codex in humanize
@@ -112,10 +114,11 @@ Two things came out of getting this run to work:
 ```bash
 bun src/cli.ts --project <id|name> --prompt "<task>" [options]
 bun src/cli.ts --score <workspaceId,...>        # re-score workspaces later
+bun src/cli.ts --show <run-id>                  # re-print a past run's scoreboard
 bun src/cli.ts --help
 ```
 
-Useful options: `--agents claude,codex,gemini`, `--verify "<cmd>"`, `--base-branch main`,
+Useful options: `--agents claude,codex` (the default), `--verify "<cmd>"`, `--base-branch main`,
 `--timeout 30m`, `--jobs 4` (verify in parallel), `--no-baseline`, `--cleanup` (delete every
 race workspace except the winner's), `--json`.
 

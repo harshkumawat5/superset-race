@@ -2,7 +2,7 @@
 Feature request for superset-sh/superset, following .github/ISSUE_TEMPLATE/feature_request.yml.
 Before opening:
   - replace the scoreboard with the one from the real run (~/.superset-race/<run-id>/scoreboard.md)
-  - commit the Superset screenshot as docs/real-run-superset.png (or drop the image line)
+  - commit the scoreboard screenshot as docs/real-run-scoreboard.png (or drop the image line)
 Title:
   [feat] CLI: race one prompt across agents — `superset agents wait` + `superset race`
 -->
@@ -95,7 +95,7 @@ I built the proposal as a standalone script on today's CLI: **https://github.com
 (Bun/TypeScript, no dependencies, tested against a mock CLI). Here it is racing Claude and Codex
 on a real open bug, python-humanize/humanize#379:
 
-![Race workspaces in Superset](https://raw.githubusercontent.com/harshkumawat5/superset-race/main/docs/real-run-superset.png)
+![Scoreboard from the real run](https://raw.githubusercontent.com/harshkumawat5/superset-race/main/docs/real-run-scoreboard.png)
 
 | # | AGENT | STATUS | TIME | TESTS | NEW TESTS | TEST FILES | DIFF |
 | --- | --- | --- | --- | --- | --- | --- | --- |
