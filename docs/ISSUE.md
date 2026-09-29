@@ -1,4 +1,5 @@
 <!--
+Opened as https://github.com/superset-sh/superset/issues/7939 on 2026-09-30.
 Feature request for superset-sh/superset, following .github/ISSUE_TEMPLATE/feature_request.yml.
 Before opening:
   - replace the scoreboard with the one from the real run (~/.superset-race/<run-id>/scoreboard.md)

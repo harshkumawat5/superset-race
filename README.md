@@ -95,6 +95,8 @@ Two things came out of getting this run to work:
 - **Gemini isn't in the default race.** Its free API tier allows 20 requests a day, and one agent
   session uses more than that.
 
+The proposal to build this into Superset is [superset-sh/superset#7939](https://github.com/superset-sh/superset/issues/7939).
+
 ## Try it
 
 [`demo/`](demo/) races Claude and Codex on a real open-source bug
